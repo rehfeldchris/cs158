@@ -92,15 +92,15 @@ void set_socket_timeout_for_message_size(int bytes) {
 
 int main(int argc, char * argv[]) {
 	int i, j;
-	int msg_sizes[10] = {1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 63999 };
+	int msg_sizes[10] = {1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64000 };
 	int num_msg_sizes = 7;
+	printf(argv[1]);
 	if (argc == 2) {
 		host = argv[1];
 	} else {
 		fprintf(stderr, "usage: simplex-talk-client host\n");
 		exit(1);
 	}
-
 	/* translate host name into peer's IP address */
 	hp = gethostbyname(host);
 	if (!hp) {
@@ -113,10 +113,9 @@ int main(int argc, char * argv[]) {
 	sin.sin_family = AF_INET;
 	bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
 	sin.sin_port = htons(SERVER_PORT);
-
 	/* active open */
 	if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("simplex-talk-client: socket");
+		perror("simplex-talk-client: socket\n");
 		exit(1);
 	}
 
@@ -125,21 +124,23 @@ int main(int argc, char * argv[]) {
 		msg_len = msg_sizes[i];
 		init_msg(msg_len);
 		set_socket_timeout_for_message_size(msg_len);
-		gettimeofday(&start);
+		gettimeofday(&start, NULL);
 		int num_successful_messages = 0;
 		for (j = 0; j < num_messages_to_send_per_size; j++) {
 			int success = send_and_receive_msg((size_t) msg_len);
 			if (success) {
 				num_successful_messages++;
 			}
-		}
+		} 
 		int lost_and_found = recv_any_remaining_messages((size_t) msg_len);
 		if (lost_and_found) {
 			num_successful_messages += lost_and_found;
 			printf("found %d %dB messages lingering afterwards\n", lost_and_found, msg_len);
 		}
-		gettimeofday(&stop);
+		
+		gettimeofday(&stop, NULL);
 		double elapsed = time_diff(start, stop);
+
 		printf(
 			"msg size=%dB, attempted=%d, successful=%d, total time=%.4f, avg rtt=%.4f, throughput=%.1fb per sec\n",
 			msg_len,
@@ -148,10 +149,10 @@ int main(int argc, char * argv[]) {
 			elapsed,
 			elapsed / num_messages_to_send_per_size,
 			8 * (num_successful_messages *msg_len ) / elapsed
-		);
+		);  
 	}
 
-	getc(stdin);
+//	getc(stdin);
 }
 
 

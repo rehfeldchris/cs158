@@ -1,137 +1,71 @@
-/* 
- * tcpserver.c - A simple TCP echo server 
- * usage: tcpserver <port>
- */
+/* tcpserver.c */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
-#define BUFSIZE 1024
 
+int main()
+{
+        int sock, connected, bytes_recieved , true = 1;  
+        char send_data [64000] , recv_data[64000];       
 
-/*
- * error - wrapper for perror
- */
-void error(char *msg) {
-  perror(msg);
-  exit(1);
-}
+        struct sockaddr_in server_addr,client_addr;    
+        int sin_size;
+        
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+            perror("Socket");
+            exit(1);
+        }
 
-int main(int argc, char **argv) {
-  int parentfd; /* parent socket */
-  int childfd; /* child socket */
-  int portno; /* port to listen on */
-  int clientlen; /* byte size of client's address */
-  struct sockaddr_in serveraddr; /* server's addr */
-  struct sockaddr_in clientaddr; /* client addr */
-  struct hostent *hostp; /* client host info */
-  char buf[BUFSIZE]; /* message buffer */
-  char *hostaddrp; /* dotted decimal host addr string */
-  int optval; /* flag value for setsockopt */
-  int n; /* message byte size */
+        if (setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&true,sizeof(int)) == -1) {
+            perror("Setsockopt");
+            exit(1);
+        }
+        
+        server_addr.sin_family = AF_INET;         
+        server_addr.sin_port = htons(5000);     
+        server_addr.sin_addr.s_addr = INADDR_ANY; 
+        bzero(&(server_addr.sin_zero),8); 
 
-  /* 
-   * check command line arguments 
-   */
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <port>\n", argv[0]);
-    exit(1);
-  }
-  portno = atoi(argv[1]);
+        if (bind(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr))
+                                                                       == -1) {
+            perror("Unable to bind");
+            exit(1);
+        }
 
-  /* 
-   * socket: create the parent socket 
-   */
-  parentfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (parentfd < 0) 
-    error("ERROR opening socket");
-
-  /* setsockopt: Handy debugging trick that lets 
-   * us rerun the server immediately after we kill it; 
-   * otherwise we have to wait about 20 secs. 
-   * Eliminates "ERROR on binding: Address already in use" error. 
-   */
-  optval = 1;
-  setsockopt(parentfd, SOL_SOCKET, SO_REUSEADDR, 
-	     (const void *)&optval , sizeof(int));
-
-  /*
-   * build the server's Internet address
-   */
-  bzero((char *) &serveraddr, sizeof(serveraddr));
-
-  /* this is an Internet address */
-  serveraddr.sin_family = AF_INET;
-
-  /* let the system figure out our IP address */
-  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-  /* this is the port we will listen on */
-  serveraddr.sin_port = htons((unsigned short)portno);
-
-  /* 
-   * bind: associate the parent socket with a port 
-   */
-  if (bind(parentfd, (struct sockaddr *) &serveraddr, 
-	   sizeof(serveraddr)) < 0) 
-    error("ERROR on binding");
-
-  /* 
-   * listen: make this socket ready to accept connection requests 
-   */
-  if (listen(parentfd, 5) < 0) /* allow 5 requests to queue up */ 
-    error("ERROR on listen");
-
-  /* 
-   * main loop: wait for a connection request, echo input line, 
-   * then close connection.
-   */
-  clientlen = sizeof(clientaddr);
-  while (1) {
-
-    /* 
-     * accept: wait for a connection request 
-     */
-    childfd = accept(parentfd, (struct sockaddr *) &clientaddr, &clientlen);
-    if (childfd < 0) 
-      error("ERROR on accept");
+        if (listen(sock, 5) == -1) {
+            perror("Listen");
+            exit(1);
+        }
     
-    /* 
-     * gethostbyaddr: determine who sent the message 
-     */
-    hostp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr, 
-			  sizeof(clientaddr.sin_addr.s_addr), AF_INET);
-    if (hostp == NULL)
-      error("ERROR on gethostbyaddr");
-    hostaddrp = inet_ntoa(clientaddr.sin_addr);
-    if (hostaddrp == NULL)
-      error("ERROR on inet_ntoa\n");
-    printf("server established connection with %s (%s)\n", 
-	   hostp->h_name, hostaddrp);
-    
-    /* 
-     * read: read input string from the client
-     */
-    bzero(buf, BUFSIZE);
-    n = read(childfd, buf, BUFSIZE);
-    if (n < 0) 
-      error("ERROR reading from socket");
-    printf("server received %d bytes: %s", n, buf);
-    
-    /* 
-     * write: echo the input string back to the client 
-     */
-    n = write(childfd, buf, strlen(buf));
-    if (n < 0) 
-      error("ERROR writing to socket");
+  printf("\nTCPServer Waiting for client on port 5000");
+        fflush(stdout);
 
-    close(childfd);
-  }
-}
+
+        while(1)
+        {  
+
+            sin_size = sizeof(struct sockaddr_in);
+
+            connected = accept(sock, (struct sockaddr *)&client_addr,&sin_size);
+
+            printf("\n I got a connection from (%s , %d)",
+                   inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+
+              bytes_recieved = recv(connected,recv_data,64000,0);
+              recv_data[bytes_recieved] = '\0';
+              printf("\n RECIEVED DATA = %s " , recv_data);
+              send(connected, recv_data,strlen(recv_data), 0);  
+              close(connected);
+        }       
+
+      close(sock);
+      return 0;
+} 
