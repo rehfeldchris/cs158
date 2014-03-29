@@ -10,11 +10,12 @@
 #include <errno.h>
 #include <string.h>
 
-
+#define MAX_BUF 64000
+#define PORT 5000
 int main()
 {
         int sock, connected, bytes_recieved , true = 1;  
-        char send_data [64000] , recv_data[64000];       
+        char send_data[MAX_BUF] , recv_data[MAX_BUF];       
 
         struct sockaddr_in server_addr,client_addr;    
         int sin_size;
@@ -30,7 +31,7 @@ int main()
         }
         
         server_addr.sin_family = AF_INET;         
-        server_addr.sin_port = htons(5000);     
+        server_addr.sin_port = htons(PORT);     
         server_addr.sin_addr.s_addr = INADDR_ANY; 
         bzero(&(server_addr.sin_zero),8); 
 
@@ -45,7 +46,7 @@ int main()
             exit(1);
         }
     
-  printf("\nTCPServer Waiting for client on port 5000");
+  printf("\nTCPServer Waiting for client on port %d\n", PORT);
         fflush(stdout);
 
 
@@ -59,9 +60,9 @@ int main()
             printf("\n I got a connection from (%s , %d)",
                    inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
 
-              bytes_recieved = recv(connected,recv_data,64000,0);
+              bytes_recieved = recv(connected,recv_data,MAX_BUF,0);
               recv_data[bytes_recieved] = '\0';
-              printf("\n RECIEVED DATA = %s " , recv_data);
+              printf("\nRECIEVED %d bytes" , bytes_recieved);
               send(connected, recv_data,strlen(recv_data), 0);  
               close(connected);
         }       
