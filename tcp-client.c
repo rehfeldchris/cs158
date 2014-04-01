@@ -20,7 +20,7 @@ double time_diff(struct timeval x , struct timeval y)
 int main(int argc, char * argv[])
 
 {
-      int msg_sizes[SIZE_COUNT] = {1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64000 };
+      int msg_sizes[SIZE_COUNT] = {1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024 };
         int sock, bytes_recieved,i,j,k;  
         char send_data[MAX_BYTE],recv_data[MAX_BYTE];
         char *hostname;
@@ -68,6 +68,7 @@ int main(int argc, char * argv[])
                gettimeofday(&stop, NULL);
                double elapsed = time_diff(start, stop);
                printf("#%d TOOK: %G TO GET BACK %d bytes\n", j+1, elapsed, bytes_recieved);
+
                close(sock); 
             } // Send
          } // SEND_COUNT
