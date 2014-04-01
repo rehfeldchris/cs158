@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <string.h>
 
-#define MAX_BUF 64000
+#define MAX_BUF 128000
 #define PORT 5000
 int main()
 {
