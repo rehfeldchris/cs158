@@ -34,7 +34,7 @@ int main(int argc, char * argv[])
             hostname = "127.0.0.1";
          }
          host = gethostbyname(hostname);
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
             perror("Socket");
             exit(1);
         }

@@ -20,7 +20,7 @@ int main()
         struct sockaddr_in server_addr,client_addr;    
         int sin_size;
         
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
             perror("Socket");
             exit(1);
         }
