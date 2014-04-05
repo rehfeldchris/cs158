@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <errno.h>
 #define PORT 5000
-#define MAX_BYTE 64000
+#define MAX_BYTE 66000
 #define SIZE_COUNT 7
 #define SEND_COUNT 10
 double time_diff(struct timeval x , struct timeval y)
