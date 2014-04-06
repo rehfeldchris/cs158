@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
             {
                send_data[i]='A';
             }
-            send_data[msg_sizes[k]] = '\0'; // Null terminate the string
+            send_data[msg_sizes[k]-1] = 'B'; // Null terminate the string
             if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) { // Create the socket
                perror("Socket");
             }
@@ -62,9 +62,9 @@ int main(int argc, char * argv[])
                perror("Connect");
             } else {
                gettimeofday(&start, NULL);              
-               send(sock,send_data,strlen(send_data), 0);  
+               send(sock,send_data,strlen(send_data)+1, 0);  
                bytes_recieved=recv(sock,recv_data,MAX_BYTE,0); // Get received count
-               recv_data[bytes_recieved] = '\0';  // Null terminate the string
+          //     recv_data[bytes_recieved] = '\0';  // Null terminate the string
                gettimeofday(&stop, NULL);
                double elapsed = time_diff(start, stop);
                printf("#%d TOOK: %G TO GET BACK %d bytes\n", j+1, elapsed, bytes_recieved);
