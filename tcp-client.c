@@ -12,7 +12,7 @@
 #define PORT 5000
 #define MAX_BYTE 65537
 #define SIZE_COUNT 7
-#define SEND_COUNT 10
+#define SEND_COUNT 100
 double time_diff(struct timeval x , struct timeval y)
 {
    return (y.tv_sec - x.tv_sec) + 1e-6 * (y.tv_usec - x.tv_usec);
@@ -22,6 +22,7 @@ int main(int argc, char * argv[])
 {
       int msg_sizes[SIZE_COUNT] = {1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024 };
         int sock, bytes_recieved,i,j,k;  
+        double totaltime = 0;
         char send_data[MAX_BYTE],recv_data[MAX_BYTE];
         char *hostname;
         struct hostent *host;
@@ -69,36 +70,39 @@ int main(int argc, char * argv[])
                gettimeofday(&start, NULL);
 			   
 			   int sent = send(sock,send_data,strlen(send_data), 0);
-			   printf("#%d Sent: %d\n",j+1, sent);
+		//	   printf("#%d Sent: %d\n",j+1, sent);
                if( sent < 0)
 			    perror("Sending");
-				printf("#%d Sent: %d bytes\n", j+1, sent);
+		//		printf("#%d Sent: %d bytes\n", j+1, sent);
 				
 				int count = 0;
 			   count += recv(sock,recv_data,MAX_BYTE,0);
-			   printf("packet: %d bytes\n", count);
-			   printf("Last char: %s\n",&recv_data[count-1]);
+	//		   printf("packet: %d bytes\n", count);
+		//	   printf("Last char: %s\n",&recv_data[count-1]);
 			   while(recv_data > 0 && recv_data[count-1] != 'B')
 			   {
 					int temp = recv(sock,&recv_data[count],MAX_BYTE,0);
 					count += temp;
-					printf("packet: %d bytes\n", temp);
-					printf("Last Char: %s\n",&recv_data[count-1]);
+			//		printf("packet: %d bytes\n", temp);
+		      //		printf("Last Char: %s\n",&recv_data[count-1]);
 			   }
-			   printf("End Of Message Found\n");
+	//		   printf("End Of Message Found\n");
 
 			   
 			  
-              printf("Recieved %d bytes\n" , count);
+     //         printf("Recieved %d bytes\n" , count);
 			  
 			  
                gettimeofday(&stop, NULL);
                double elapsed = time_diff(start, stop);
-               printf("#%d TOOK %G seconds to SEND %d bytes and RECEIVE %d\n bytes\n" , j+1, elapsed, sent, count);
-			   printf("#%d ClOSING\n\n", j+1);
+               totaltime += elapsed;
+     //          printf("#%d TOOK %G seconds to SEND %d bytes and RECEIVE %d\n bytes\n" , j+1, elapsed, sent, count);
+	//		   printf("#%d ClOSING\n\n", j+1);
                close(sock);
             } // Send
          } // SEND_COUNT
+         printf("Average RTT: %G\n", totaltime/SEND_COUNT);
+         printf("Average Throughput: %G\n", msg_sizes[k]/totaltime);
          sleep(2); // Sleep for easier viewing of output
       } // SIZE_COUNT
         
