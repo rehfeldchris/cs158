@@ -10,16 +10,11 @@
 #include <errno.h>
 #include <string.h>
 
-#define MAX_BUF 128000
+#define MAX_BUF 65537
 #define PORT 5000
-
-int checkMessage()
-{
-
-}
 int main()
 {
-        int sock, connected, bytes_recieved, bytes_sent, true = 1;  
+        int sock, connected, bytes_recieved , true = 1;  
         char send_data[MAX_BUF] , recv_data[MAX_BUF];       
 
         struct sockaddr_in server_addr,client_addr;    
@@ -52,40 +47,45 @@ int main()
         }
     
   printf("\nTCPServer Waiting for client on port %d\n", PORT);
-        fflush(stdout);
 
 
         while(1)
-        {  
-            int total = 0;
-            int i;
-            int done = 0;
+        {
+		memset(&recv_data[0], 0, sizeof(recv_data));
+		memset(&send_data[0], 0, sizeof(send_data));
+		fflush(stdout);
+
             sin_size = sizeof(struct sockaddr_in);
 
             connected = accept(sock, (struct sockaddr *)&client_addr,&sin_size);
 
-            printf("\n I got a connection from (%s , %d)",
+            printf("\nCONNECTION: (%s , %d)\n",
                    inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
-            while(done == 0)
-            {
-              bytes_recieved = recv(connected,recv_data,MAX_BUF+total,total);
-              total+=bytes_recieved;
-              for(i = 0; i < total; i++)
-              {
-                if(recv_data[i] == 'B')
-                {
-                  done = 1;
-                  printf("\nRECIEVED %d bytes" , total);
-                  printf("\nNow Sending: %d after receiving %d", strlen(recv_data), bytes_recieved);
-                  if(bytes_sent = send(connected, recv_data,total, 0) < total)
-                  {
-                    printf("Did not complete sending");
-                  }  
-                  break;
-                }
-              }
-            }              
-            close(connected);
+			   
+			   int count = 0;
+			   count += recv(connected,recv_data,MAX_BUF,0);
+			   printf("packet: %d bytes\n", count);
+			   printf("Last char: %s\n",&recv_data[count-1]);
+			   while(recv_data > 0 && recv_data[count-1] != 'B')
+			   {
+					int temp = recv(connected,&recv_data[count],MAX_BUF,0);
+					count += temp;
+					printf("packet: %d bytes\n", temp);
+					printf("Last Char: %s\n",&recv_data[count-1]);
+			   }
+			   printf("End Of Message Found\n");
+			   
+			  
+              printf("RECIEVED %d bytes\n" , count);
+			  
+			   int sent = send(connected,&recv_data[0],strlen(&recv_data[0]), 0);
+			   printf("Sent: %d\n", sent);
+               if( sent < 0)
+			    perror("Sending");
+			  
+ 			  printf("ClOSING: (%s , %d)\n\n",
+                   inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+              close(connected);
         }       
 
       close(sock);
