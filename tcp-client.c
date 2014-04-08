@@ -102,7 +102,7 @@ int main(int argc, char * argv[])
             } // Send
          } // SEND_COUNT
          printf("Average RTT: %G\n", totaltime/SEND_COUNT);
-         printf("Average Throughput: %G\n", msg_sizes[k]/totaltime);
+         printf("Average Throughput: %G\n", SEND_COUNT * msg_sizes[k]/totaltime);
 		 printf("Total time: %G\n", totaltime);
       } // SIZE_COUNT
         
