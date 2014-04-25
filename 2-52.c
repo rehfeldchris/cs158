@@ -3,23 +3,28 @@
 #include <math.h>
 #include <time.h>
 
+#define NUM_LAMBDAS 9
+
 time_t t;
-int numLambdas = 9;
 int maxLambdaVal = 20;
-int lambdas[10] = {20, 18, 16, 14, 12, 10, 8, 6, 4};
+int lambdas[NUM_LAMBDAS] = {20, 18, 16, 14, 12, 10, 8, 6, 4};
 int numTrialsPerLambda = 50;
 int results[21][51];
+double interval, currentAttemptTime, prev1AttemptTime, prev2AttemptTime, timeNow = 0;
 
+/*
+ * Code for ch2 problem 52
+ * project 3 part c
+ **/
+
+// creates a random num between 0 to 1
 double rand0to1() {
     return (double)rand() / (double)RAND_MAX;
 }
 
+// returns −λ * logu, with u being a rand num between 0 to 1.
 double calcRandIntervalBetweenTransmissionAttempts(int lambda) {
 	return -1 * lambda * log(rand0to1());
-}
-
-int isCollision(double timeNow, double currentAttemptTime) {
-	return (timeNow + 1) > currentAttemptTime && (timeNow - 1) < currentAttemptTime;
 }
 
 // inits the results multidim array to all zeros
@@ -32,42 +37,58 @@ void initResultsArray() {
 	}
 }
 
-int calcContentionInterval(int lambda) {
-	int i, numNonCollisions = 0, numAttempts = 0;
-	double interval, currentAttemptTime, timeNow = 0;
-
-	for (i = 0; i < 20; i++) {
-		interval = calcRandIntervalBetweenTransmissionAttempts(lambda);
-		printf("%.3f\n", interval);
-		currentAttemptTime = interval + timeNow;
-		//printf("%.5lf %.5lf %.5lf\n", timeNow , interval , currentAttemptTime);
-
-		if (!isCollision(timeNow, currentAttemptTime)) {
-			numNonCollisions++;
-		}
-
-		numAttempts++;
-		timeNow = currentAttemptTime;
-
-		if (numNonCollisions == 2) {
-			return numAttempts;
-		}
-	}
-
-	// shouldnt happen
-	return -100000;
+// checks if the previous(not the most recent) transmission attempt
+// collided with the current, or the "previous previous"
+int isPrevAttemptACollision() {
+	return (timeNow + 1) > prev1AttemptTime && (timeNow - 1) < prev1AttemptTime;
 }
 
-// calcs the number of attempts we had to use to succeed at transmitting without a collision, for each possible lambda.
-// does it 50 times for each lambda, storing the results in an array.
+// simulates a transmission, updating global bookeeping variables
+void makeTransmissionAttempt(int lambda) {
+	// shift the attempt time records backwards in our history buffers
+	prev2AttemptTime = prev1AttemptTime;
+	prev1AttemptTime = currentAttemptTime;
+
+	// make a new attempt
+	interval = calcRandIntervalBetweenTransmissionAttempts(lambda);
+	currentAttemptTime = interval + timeNow;
+	timeNow = currentAttemptTime;
+}
+
+// calculates how long was needed before a successful transmission occured.
+// the units are slot times.
+int calcContentionInterval(int lambda) {
+	int numAttempts;
+
+	// we start by making 2 attempts. We do this because only on or after the 3rd attempt would it be
+	// possible to identify a successful transmission. It's possible the 2nd transmission was successful.
+	makeTransmissionAttempt(lambda);
+	makeTransmissionAttempt(lambda);
+	numAttempts = 2;
+
+	do {
+		makeTransmissionAttempt(lambda);
+		numAttempts++;
+	} while (isPrevAttemptACollision());
+
+	// we always subtract 1 because it was the previous attempt that succeeded. we just didnt
+	// know that it succeeded until after we had made another attempt.
+	return numAttempts - 1;
+}
+
+
+// calcs the number of slot times we had to use to succeed at transmitting without a collision, for each possible lambda.
+// it does it 50 times for each lambda, storing the results in an array.
 void runSim() {
 	int i, j, lambda;
-	for (i = 0; i < numLambdas; i++) {
+	printf("trial#\tlambda\tslot times\n");
+	for (i = 0; i < NUM_LAMBDAS; i++) {
 		lambda = lambdas[i];
 		for (j = 0; j < numTrialsPerLambda; j++) {
 			results[lambda][j] = calcContentionInterval(lambda);
 			printf(
-				"lambda = %d, attempts = %d\n",
+				"%d\t%d\t%d\n",
+				j,
 				lambda,
 				results[lambda][j]
 			);
@@ -75,16 +96,19 @@ void runSim() {
 	}
 }
 
+// computes and prints the average statistics
 void printAverages() {
 	int i, j, lambda, attempts;
-	for (i = 0; i < numLambdas; i++) {
+	printf("----Averages of runs----\n");
+	printf("lambda\tavg slot time\n");
+	for (i = 0; i < NUM_LAMBDAS; i++) {
 		lambda = lambdas[i];
 		attempts = 0;
 		for (j = 0; j < numTrialsPerLambda; j++) {
 			attempts += results[lambda][j];
 		}
 		printf(
-			"lambda = %d, avg = %.3f\n",
+			"%d\t%.3f\n",
 			lambda,
 			attempts / (double) numTrialsPerLambda
 		);
