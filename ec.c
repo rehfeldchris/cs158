@@ -101,36 +101,38 @@ int main()
 	for(j=0; j < RUN_COUNT; j++) // Initialize
 		for(i=0; i < DEVICE_COUNT; i++){
 			devices[i][j] = calcRandIntervalBetweenTransmissionAttempts(lambda);
+			completedCount[i] = 0;
+			colCount[i] = 0;
 		}
-	for(j = 0; j < RUN_COUNT; j++, colcount=0, runtime[j] = 0, jitter[j] = 0, blocked = 0, completedCount[j] = 0){
+	for(j = 0; j < RUN_COUNT; j++, colcount=0){
+		jitter[j] = 0;
+		blocked = 0;
+		completedCount[j] = 0;
+
 		for(i = 0; i < RUNTIME; i++){
 			num_sending = getSendCount(devices, j, i);
 			if(num_sending > 1 || (num_sending != 0 && blocked > i)){
-				printf("collision occuring in run #%d at time %d\n",j,i);
-				printf("num_sending = %d blocked = %d\n",num_sending,blocked);
+		//		printf("collision occuring in run #%d at time %d\n",j,i);
+	//			printf("num_sending = %d blocked = %d\n",num_sending,blocked);
 				collisionOccured(devices,j, i, colcount);
 				colcount++;
 			} else if (num_sending == 1) { // 1 is sending .. block senders for 8 timeslots
 				blocked = i + PSIZE;
 				completedCount[j]++;
 				packetSent(devices,j,i,lambda);
-				printf("Blocked until %d\n",blocked);
+		//		printf("Blocked until %d\n",blocked);
+				colCount[j] += colcount;
+				colcount = 1;
 			} else { // jitter occuring -- timeslot is unused
 				jitter[j]++;
 			}
 		}
-		colCount[j] = colcount;
+		
 		runtime[j] = i;
 	}
-	for(i=0; i < DEVICE_COUNT; i++) // Prints the average for each device
-		printf("Average for device %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
-	sortRunsByFinishTime(devices); // Sort by finish time
-	for(i=0; i < DEVICE_COUNT; i++) // Average time to complete by order of completion
-		printf("Average for place %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
 	for(i = 0; i < RUN_COUNT; i++){
-		printf("Run time for run %d: %d\n", i+1, runtime[i]);
 		printf("Collision count for run %d: %d\n",i+1, colCount[i]);
 		printf("Jitter count for run %d: %d\n", i+1, jitter[i]);
-		printf("Completed count for run %d: %d\n",i+1, completedCount[i]);
+		printf("Completed count for run %d: %d\n\n",i+1, completedCount[i]);
 	}
 }
