@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 #define DEVICE_COUNT 20
-#define RUN_COUNT 20
+#define RUN_COUNT 10
 #define true 1
 #define false 0
 #define PSIZE 8
+#define RUNTIME 200000
 /*
 Simulate collision when multiple devices try to transmit
 over ethernet at the same time.
@@ -47,6 +48,15 @@ void collisionOccured(int array[DEVICE_COUNT][RUN_COUNT], int run,int currTime, 
 		}
 
 }
+
+// completed - set a new time
+void packetSent(int  array[DEVICE_COUNT][RUN_COUNT], int run, int currTime, int lambda)
+{
+	int i = 0;
+	for(i; i < DEVICE_COUNT; i++)
+		if(array[i][run] == currTime)
+			array[i][run] = currTime + PSIZE + calcRandIntervalBetweenTransmissionAttempts(lambda);
+}
 int checkFinished(int array[DEVICE_COUNT][RUN_COUNT], int run, int currTime) // Check if they have all finished
 {
 	int i = 0;
@@ -84,26 +94,27 @@ int main()
 	int jitter[RUN_COUNT];
 	int colCount[RUN_COUNT];
 	int runtime[RUN_COUNT];
-	int colcount = 0;
-	int i=0;
-	int j=0;
-	int num_sending;
-	int lambda = 0;
-	int blocked;
+	int completedCount[RUN_COUNT];
+	int i=0,j=0, colcount, lambda, num_sending, blocked, completed;
 	printf("Enter lambda: ");
 	scanf("%d", &lambda);
 	for(j=0; j < RUN_COUNT; j++) // Initialize
 		for(i=0; i < DEVICE_COUNT; i++){
 			devices[i][j] = calcRandIntervalBetweenTransmissionAttempts(lambda);
 		}
-	for(j = 0; j < RUN_COUNT; j++, colcount=0, runtime[j] = 0, jitter[j] = 0, blocked = 0){
-		for(i = 0; checkFinished(devices, j, i) == false; i++){
+	for(j = 0; j < RUN_COUNT; j++, colcount=0, runtime[j] = 0, jitter[j] = 0, blocked = 0, completedCount[j] = 0){
+		for(i = 0; i < RUNTIME; i++){
 			num_sending = getSendCount(devices, j, i);
-			if(num_sending > 1 || (num_sending != 0 && blocked >= i)){
+			if(num_sending > 1 || (num_sending != 0 && blocked > i)){
+				printf("collision occuring in run #%d at time %d\n",j,i);
+				printf("num_sending = %d blocked = %d\n",num_sending,blocked);
 				collisionOccured(devices,j, i, colcount);
 				colcount++;
 			} else if (num_sending == 1) { // 1 is sending .. block senders for 8 timeslots
 				blocked = i + PSIZE;
+				completedCount[j]++;
+				packetSent(devices,j,i,lambda);
+				printf("Blocked until %d\n",blocked);
 			} else { // jitter occuring -- timeslot is unused
 				jitter[j]++;
 			}
@@ -120,5 +131,6 @@ int main()
 		printf("Run time for run %d: %d\n", i+1, runtime[i]);
 		printf("Collision count for run %d: %d\n",i+1, colCount[i]);
 		printf("Jitter count for run %d: %d\n", i+1, jitter[i]);
+		printf("Completed count for run %d: %d\n",i+1, completedCount[i]);
 	}
 }
