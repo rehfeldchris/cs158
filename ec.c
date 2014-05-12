@@ -108,10 +108,14 @@ int main()
 		jitter[j] = 0;
 		blocked = 0;
 		completedCount[j] = 0;
-
 		for(i = 0; i < RUNTIME; i++){
 			num_sending = getSendCount(devices, j, i);
-			if(num_sending > 1 || (num_sending != 0 && blocked > i)){
+			if(num_sending > 0 && blocked > i) // Jitter?
+			{
+				collisionOccured(devices,j, i, colcount);
+				colcount++;
+				jitter[j]++;
+			} else if(num_sending > 1){
 		//		printf("collision occuring in run #%d at time %d\n",j,i);
 	//			printf("num_sending = %d blocked = %d\n",num_sending,blocked);
 				collisionOccured(devices,j, i, colcount);
@@ -123,8 +127,8 @@ int main()
 		//		printf("Blocked until %d\n",blocked);
 				colCount[j] += colcount;
 				colcount = 1;
-			} else { // jitter occuring -- timeslot is unused
-				jitter[j]++;
+			} else { // jitter occuring? -- timeslot is unused
+			//	jitter[j]++;
 			}
 		}
 		
