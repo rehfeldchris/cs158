@@ -1,124 +1,113 @@
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>
-
-#define NUM_LAMBDAS 9
-
-time_t t;
-int maxLambdaVal = 20;
-int lambdas[NUM_LAMBDAS] = {20, 18, 16, 14, 12, 10, 8, 6, 4};
-int numTrialsPerLambda = 50;
-int results[21][51];
-double interval, currentAttemptTime, prev1AttemptTime, prev2AttemptTime, timeNow = 0;
-
+#define DEVICE_COUNT 20
+#define RUN_COUNT 20
+#define true 1
+#define false 0
 /*
- * Code for ch2 problem 52
- * project 3 part c
- **/
+Simulate collision when multiple devices try to transmit
+over ethernet at the same time.
 
+Each iteration of the loop is 1 51.2us slot.
+If it is current somethings turn to go it will try and send.
+If collision happens it will then wait 2^k-1 slots to try again
+*/
+
+int getSendCount(int array[DEVICE_COUNT][RUN_COUNT], int run, int currTime) // See how many want to send
+{
+	int i = 0;
+	int attemptingToSend = 0;
+	for(i; i < DEVICE_COUNT; i++)
+		if(array[i][run] == currTime)
+			attemptingToSend = attemptingToSend + 1;
+	return attemptingToSend;
+}
 // creates a random num between 0 to 1
 double rand0to1() {
     return (double)rand() / (double)RAND_MAX;
 }
-
 // returns −λ * logu, with u being a rand num between 0 to 1.
-double calcRandIntervalBetweenTransmissionAttempts(int lambda, int runAttempts) {
-	return -1 * lambda * (1 << runAttempts);
+double calcRandIntervalBetweenTransmissionAttempts(int lambda) {
+   return -1 * lambda * log(rand0to1());
 }
 
-// inits the results multidim array to all zeros
-void initResultsArray() {
-	int i, j;
-	for (i = 0; i < maxLambdaVal; i++) {
-		for (j = 0; j < numTrialsPerLambda; j++) {
-			results[i][j] = 0;
+int pow2(int exp) // Math library was giving issues so this calculates 2^exp
+{
+	return 1 << exp;
+}
+void collisionOccured(int array[DEVICE_COUNT][RUN_COUNT], int run,int currTime, int colCount) // Handle collision occuring
+{
+	int i = 0;
+	for(i; i < DEVICE_COUNT; i++)
+		if(array[i][run] == currTime){
+			array[i][run] = currTime + 1 + (rand() % pow2(colCount)); // Add 1 since collision took a slot
 		}
-	}
+
 }
-
-// checks if the previous(not the most recent) transmission attempt
-// collided with the current, or the "previous previous"
-int isPrevAttemptACollision() {
-	return (timeNow + 1) > prev1AttemptTime && (timeNow - 1) < prev1AttemptTime;
+int checkFinished(int array[DEVICE_COUNT][RUN_COUNT], int run, int currTime) // Check if they have all finished
+{
+	int i = 0;
+	for(i; i < DEVICE_COUNT; i++)
+		if(array[i][run] >= currTime)
+			return false;
+	return true;
 }
+int calculateAverage(int array[DEVICE_COUNT][RUN_COUNT], int device) // Average out each row
+{
+	int i;
+	int average = 0;
+	for(i=0; i < RUN_COUNT; i++)
+		average += array[device][i];
+	return average/RUN_COUNT;
 
-// simulates a transmission, updating global bookeeping variables
-void makeTransmissionAttempt(int lambda, int runAttempts) {
-	// shift the attempt time records backwards in our history buffers
-	prev2AttemptTime = prev1AttemptTime;
-	prev1AttemptTime = currentAttemptTime;
-
-	// make a new attempt
-	interval = calcRandIntervalBetweenTransmissionAttempts(lambda, runAttempts);
-	currentAttemptTime = interval + timeNow;
-	timeNow = currentAttemptTime;
 }
-
-// calculates how long was needed before a successful transmission occured.
-// the units are slot times.
-int calcContentionInterval(int lambda) {
-	int numAttempts;
-
-	// we start by making 2 attempts. We do this because only on or after the 3rd attempt would it be
-	// possible to identify a successful transmission. It's possible the 2nd transmission was successful.
-	makeTransmissionAttempt(lambda);
-	makeTransmissionAttempt(lambda);
-	numAttempts = 2;
-
-	do {
-		makeTransmissionAttempt(lambda, runAttempts);
-		numAttempts++;
-	} while (isPrevAttemptACollision());
-
-	// we always subtract 1 because it was the previous attempt that succeeded. we just didnt
-	// know that it succeeded until after we had made another attempt.
-	return numAttempts - 1;
+void sortRunsByFinishTime(int array[DEVICE_COUNT][RUN_COUNT]) // Sorts array by finish time (col by col)
+{
+	int i, j,k;
+	for(k=0; k < RUN_COUNT; k++){ // Each run
+    for (i = 1; i < DEVICE_COUNT; i++) {
+    	int tmp = array[i][k];
+    	for (j = i; j >= 1 && tmp < array[j-1][k]; j--)
+    	    	array[j][k] = array[j-1][k];
+    	    array[j][k] = tmp;
+    	}
+    }
 }
-
-
-// calcs the number of slot times we had to use to succeed at transmitting without a collision, for each possible lambda.
-// it does it 50 times for each lambda, storing the results in an array.
-void runSim() {
-	int i, j, lambda;
-	printf("trial#\tlambda\tslot times\n");
-	for (i = 0; i < NUM_LAMBDAS; i++) {
-		lambda = lambdas[i];
-		for (j = 0; j < numTrialsPerLambda; j++) {
-			results[lambda][j] = calcContentionInterval(lambda);
-			printf(
-				"%d\t%d\t%d\n",
-				j,
-				lambda,
-				results[lambda][j]
-			);
-		}
-	}
-}
-
-// computes and prints the average statistics
-void printAverages() {
-	int i, j, lambda, attempts;
-	printf("----Averages of runs----\n");
-	printf("lambda\tavg slot time\n");
-	for (i = 0; i < NUM_LAMBDAS; i++) {
-		lambda = lambdas[i];
-		attempts = 0;
-		for (j = 0; j < numTrialsPerLambda; j++) {
-			attempts += results[lambda][j];
-		}
-		printf(
-			"%d\t%.3f\n",
-			lambda,
-			attempts / (double) numTrialsPerLambda
-		);
-	}
-}
-
-int main(int argc, char * argv[]) {
+int main()
+{
+	time_t t;
 	srand((unsigned) time(&t));
-	runSim();
-	printAverages();
+	int devices[DEVICE_COUNT][RUN_COUNT];
+	int colcount = 0;
+	int i=0;
+	int j=0;
+	int num_sending;
+	int lambda = 0;
+	printf("Enter lambda: ");
+	scanf("%d", &lambda);
+	for(j=0; j < RUN_COUNT; j++) // Initialize
+		for(i=0; i < DEVICE_COUNT; i++){
+			devices[i][j] = calcRandIntervalBetweenTransmissionAttempts(lambda);
+		}
+	for(j = 0; j < RUN_COUNT; j++, colcount=0){
+		
+		for(i = 0; checkFinished(devices, j, i) == false; i++){
+			num_sending = getSendCount(devices, j, i);
+			if(num_sending > 1){
+				collisionOccured(devices,j, i, colcount);
+				colcount++;
+			} else if (num_sending == 1) { // 1 is sending .. block senders 
 
-	return 0;
+			} else { // jitter occuring -- timeslot is unused
+
+			}
+		}
+	}
+	for(i=0; i < DEVICE_COUNT; i++) // Prints the average for each device
+		printf("Average for device %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
+	sortRunsByFinishTime(devices); // Sort by finish time
+	for(i=0; i < DEVICE_COUNT; i++) // Average time to complete by order of completion
+		printf("Average for place %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
 }
