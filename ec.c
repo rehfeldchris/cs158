@@ -23,8 +23,8 @@ double rand0to1() {
 }
 
 // returns −λ * logu, with u being a rand num between 0 to 1.
-double calcRandIntervalBetweenTransmissionAttempts(int lambda) {
-	return -1 * lambda * log(rand0to1());
+double calcRandIntervalBetweenTransmissionAttempts(int lambda, int runAttempts) {
+	return -1 * lambda * (1 << runAttempts);
 }
 
 // inits the results multidim array to all zeros
@@ -44,13 +44,13 @@ int isPrevAttemptACollision() {
 }
 
 // simulates a transmission, updating global bookeeping variables
-void makeTransmissionAttempt(int lambda) {
+void makeTransmissionAttempt(int lambda, int runAttempts) {
 	// shift the attempt time records backwards in our history buffers
 	prev2AttemptTime = prev1AttemptTime;
 	prev1AttemptTime = currentAttemptTime;
 
 	// make a new attempt
-	interval = calcRandIntervalBetweenTransmissionAttempts(lambda);
+	interval = calcRandIntervalBetweenTransmissionAttempts(lambda, runAttempts);
 	currentAttemptTime = interval + timeNow;
 	timeNow = currentAttemptTime;
 }
@@ -67,7 +67,7 @@ int calcContentionInterval(int lambda) {
 	numAttempts = 2;
 
 	do {
-		makeTransmissionAttempt(lambda);
+		makeTransmissionAttempt(lambda, runAttempts);
 		numAttempts++;
 	} while (isPrevAttemptACollision());
 
