@@ -46,10 +46,6 @@ void init() {
     }
 }
 
-double time_diff(struct timeval x , struct timeval y) {
-	return (y.tv_sec - x.tv_sec) + 1e-6 * (y.tv_usec - x.tv_usec);
-}
-
 long long diff_microseconds(struct timeval x , struct timeval y) {
 	time_t diff_secs = x.tv_sec - y.tv_sec;
 	time_t diff_microsecs = x.tv_usec - y.tv_usec;
@@ -60,7 +56,7 @@ int atLeast1SlotTimeElapsedSincePrevMessage() {
 	struct timeval now;
 	gettimeofday(&now, NULL);
 	long long elapsed = diff_microseconds(now, mostRecentMessage);
-	printf("elapsed: %ld\n", elapsed);
+	//printf("elapsed: %lld\n", elapsed);
 	return elapsed > SLOT_TIME_MICROSECONDS;
 }
 
@@ -71,7 +67,7 @@ void markMessageReceived() {
 
 void sleepFor1SlotTime() {
 	struct timespec sleepDuration, unsleptRemainder;
-	printf("sleeping\n");
+	//printf("sleeping\n");
 	sleepDuration.tv_sec = 0;
 	sleepDuration.tv_nsec = SLOT_TIME_NANOSECONDS;
 	nanosleep(&sleepDuration, &unsleptRemainder);
@@ -91,7 +87,7 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
     	perror("recv");
     	return 0;
     }
-    printf("got %d bytes '%s'\n", bytesReceived, buf);
+    //printf("got %d bytes '%s'\n", bytesReceived, buf);
 
     // to check for collision, we start by looking if a previous message was received within
     // 1 slot time ago. if so, its a collsion for sure. but, if not, then we note how many messages the server has received
@@ -105,7 +101,7 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
     pthread_mutex_unlock(&messageRecordingLock);
 
     if (isCollision) {
-    	printf("collision before sleep\n");
+    	//printf("collision before sleep\n");
     }
 
     if (!isCollision) {
@@ -115,7 +111,7 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
         isCollision = numMessagesBeforeSleep != numMessagesReceived - 1;
         pthread_mutex_unlock(&messageRecordingLock);
         if (isCollision) {
-        	printf("collision after sleep\n");
+        	//printf("collision after sleep\n");
         }
     }
 
@@ -128,7 +124,7 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
     	return 0;
     }
 
-    printf("sent reply\n");
+    //printf("sent reply\n");
     return 1;
 }
 
@@ -138,7 +134,7 @@ void *serviceClient(void * param) {
 	while(receivedAndReply(connectionInfoPtr)) {}
 
     printf("thread ending\n");
-    return 1;
+    return NULL;
 }
 
 void acceptAndServiceConnection() {
