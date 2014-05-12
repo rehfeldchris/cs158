@@ -6,6 +6,7 @@
 #define RUN_COUNT 20
 #define true 1
 #define false 0
+#define PSIZE 8
 /*
 Simulate collision when multiple devices try to transmit
 over ethernet at the same time.
@@ -80,34 +81,44 @@ int main()
 	time_t t;
 	srand((unsigned) time(&t));
 	int devices[DEVICE_COUNT][RUN_COUNT];
+	int jitter[RUN_COUNT];
+	int colCount[RUN_COUNT];
+	int runtime[RUN_COUNT];
 	int colcount = 0;
 	int i=0;
 	int j=0;
 	int num_sending;
 	int lambda = 0;
+	int blocked;
 	printf("Enter lambda: ");
 	scanf("%d", &lambda);
 	for(j=0; j < RUN_COUNT; j++) // Initialize
 		for(i=0; i < DEVICE_COUNT; i++){
 			devices[i][j] = calcRandIntervalBetweenTransmissionAttempts(lambda);
 		}
-	for(j = 0; j < RUN_COUNT; j++, colcount=0){
-		
+	for(j = 0; j < RUN_COUNT; j++, colcount=0, runtime[j] = 0, jitter[j] = 0, blocked = 0){
 		for(i = 0; checkFinished(devices, j, i) == false; i++){
 			num_sending = getSendCount(devices, j, i);
-			if(num_sending > 1){
+			if(num_sending > 1 || (num_sending != 0 && blocked >= i)){
 				collisionOccured(devices,j, i, colcount);
 				colcount++;
-			} else if (num_sending == 1) { // 1 is sending .. block senders 
-
+			} else if (num_sending == 1) { // 1 is sending .. block senders for 8 timeslots
+				blocked = i + PSIZE;
 			} else { // jitter occuring -- timeslot is unused
-
+				jitter[j]++;
 			}
 		}
+		colCount[j] = colcount;
+		runtime[j] = i;
 	}
 	for(i=0; i < DEVICE_COUNT; i++) // Prints the average for each device
 		printf("Average for device %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
 	sortRunsByFinishTime(devices); // Sort by finish time
 	for(i=0; i < DEVICE_COUNT; i++) // Average time to complete by order of completion
 		printf("Average for place %d: %d slot wait over %d runs\n", i+1,calculateAverage(devices,i), RUN_COUNT);
+	for(i = 0; i < RUN_COUNT; i++){
+		printf("Run time for run %d: %d\n", i+1, runtime[i]);
+		printf("Collision count for run %d: %d\n",i+1, colCount[i]);
+		printf("Jitter count for run %d: %d\n", i+1, jitter[i]);
+	}
 }
