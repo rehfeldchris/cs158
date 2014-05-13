@@ -29,16 +29,16 @@ pthread_mutex_t messageRecordingLock;
 int numMessagesReceived = 0;
 
 typedef struct {
-	int conn;
-	size_t sin_size;
-	struct sockaddr_in client_addr;
+    int conn;
+    size_t sin_size;
+    struct sockaddr_in client_addr;
 } ConnectionInfo;
 
 void init() {
-	// we initialize these values so that the arithmetic which checks
-	// for a collision will work properly on the first message.
-	mostRecentMessage.tv_sec = 0;
-	mostRecentMessage.tv_usec = 0;
+    // we initialize these values so that the arithmetic which checks
+    // for a collision will work properly on the first message.
+    mostRecentMessage.tv_sec = 0;
+    mostRecentMessage.tv_usec = 0;
 
     if (pthread_mutex_init(&messageRecordingLock, NULL) != 0) {
         printf("\n mutex init failed\n");
@@ -47,45 +47,45 @@ void init() {
 }
 
 long long diff_microseconds(struct timeval x , struct timeval y) {
-	time_t diff_secs = x.tv_sec - y.tv_sec;
-	time_t diff_microsecs = x.tv_usec - y.tv_usec;
-	return diff_microsecs + diff_secs * 1000000LL;
+    time_t diff_secs = x.tv_sec - y.tv_sec;
+    time_t diff_microsecs = x.tv_usec - y.tv_usec;
+    return diff_microsecs + diff_secs * 1000000LL;
 }
 
 int atLeast1SlotTimeElapsedSincePrevMessage() {
-	struct timeval now;
-	gettimeofday(&now, NULL);
-	long long elapsed = diff_microseconds(now, mostRecentMessage);
-	//printf("elapsed: %lld\n", elapsed);
-	return elapsed > SLOT_TIME_MICROSECONDS;
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    long long elapsed = diff_microseconds(now, mostRecentMessage);
+    //printf("elapsed: %lld\n", elapsed);
+    return elapsed > SLOT_TIME_MICROSECONDS;
 }
 
 void markMessageReceived() {
-	gettimeofday(&mostRecentMessage, NULL);
-	numMessagesReceived++;
+    gettimeofday(&mostRecentMessage, NULL);
+    numMessagesReceived++;
 }
 
 void sleepFor1SlotTime() {
-	struct timespec sleepDuration, unsleptRemainder;
-	//printf("sleeping\n");
-	sleepDuration.tv_sec = 0;
-	sleepDuration.tv_nsec = SLOT_TIME_NANOSECONDS;
-	nanosleep(&sleepDuration, &unsleptRemainder);
+    struct timespec sleepDuration, unsleptRemainder;
+    //printf("sleeping\n");
+    sleepDuration.tv_sec = 0;
+    sleepDuration.tv_nsec = SLOT_TIME_NANOSECONDS;
+    nanosleep(&sleepDuration, &unsleptRemainder);
 }
 
 // returns 0 if it thinks the client disconnected/errored, else 1
 int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
-	char buf[MAX_BUF];
-	char * msg;
-	int bytesReceived, bytesSent, isCollision, len, numMessagesBeforeSleep;
+    char buf[MAX_BUF];
+    char * msg;
+    int bytesReceived, bytesSent, isCollision, len, numMessagesBeforeSleep;
 
-	memset(buf, 0, MAX_BUF);
+    memset(buf, 0, MAX_BUF);
 
     //we assume the client always sends 1 byte messages
     bytesReceived = recv(connectionInfoPtr->conn, buf, MAX_BUF, 0);
     if (bytesReceived < 1) {
-    	perror("recv");
-    	return 0;
+        perror("recv");
+        return 0;
     }
     //printf("got %d bytes '%s'\n", bytesReceived, buf);
 
@@ -101,17 +101,17 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
     pthread_mutex_unlock(&messageRecordingLock);
 
     if (isCollision) {
-    	//printf("collision before sleep\n");
+        //printf("collision before sleep\n");
     }
 
     if (!isCollision) {
-    	sleepFor1SlotTime();
+        sleepFor1SlotTime();
         pthread_mutex_lock(&messageRecordingLock);
         // we subtract 1 because we added our own message
         isCollision = numMessagesBeforeSleep != numMessagesReceived - 1;
         pthread_mutex_unlock(&messageRecordingLock);
         if (isCollision) {
-        	//printf("collision after sleep\n");
+            //printf("collision after sleep\n");
         }
     }
 
@@ -120,8 +120,8 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
     len = strlen(msg);
     bytesSent = send(connectionInfoPtr->conn, msg, len, 0);
     if (bytesSent < 1) {
-    	perror("send");
-    	return 0;
+        perror("send");
+        return 0;
     }
 
     //printf("sent reply\n");
@@ -129,32 +129,32 @@ int receivedAndReply(ConnectionInfo * connectionInfoPtr) {
 }
 
 void *serviceClient(void * param) {
-	ConnectionInfo * connectionInfoPtr = (ConnectionInfo *) param;
+    ConnectionInfo * connectionInfoPtr = (ConnectionInfo *) param;
 
-	while(receivedAndReply(connectionInfoPtr)) {}
+    while(receivedAndReply(connectionInfoPtr)) {}
 
     printf("thread ending\n");
     return NULL;
 }
 
 void acceptAndServiceConnection() {
-	pthread_t thread;
-	ConnectionInfo * connectionInfoPtr = (ConnectionInfo *) malloc(sizeof(ConnectionInfo));
-	connectionInfoPtr->sin_size = sizeof(struct sockaddr_in);
+    pthread_t thread;
+    ConnectionInfo * connectionInfoPtr = (ConnectionInfo *) malloc(sizeof(ConnectionInfo));
+    connectionInfoPtr->sin_size = sizeof(struct sockaddr_in);
     connectionInfoPtr->conn = accept(sock, (struct sockaddr *)&connectionInfoPtr->client_addr, &connectionInfoPtr->sin_size);
 
     if (connectionInfoPtr->conn == -1) {
-    	perror("accept failed");
+        perror("accept failed");
     } else {
-    	printf("\nCONNECTION: (%s , %d)\n", inet_ntoa(connectionInfoPtr->client_addr.sin_addr), ntohs(connectionInfoPtr->client_addr.sin_port));
+        printf("\nCONNECTION: (%s , %d)\n", inet_ntoa(connectionInfoPtr->client_addr.sin_addr), ntohs(connectionInfoPtr->client_addr.sin_port));
     }
 
-	if (pthread_create(&thread, NULL, serviceClient, connectionInfoPtr)) {
-		perror("Error creating thread\n");
-		exit(1);
-	}
+    if (pthread_create(&thread, NULL, serviceClient, connectionInfoPtr)) {
+        perror("Error creating thread\n");
+        exit(1);
+    }
 
-	printf("spawned thread\n");
+    printf("spawned thread\n");
 }
 
 
@@ -189,8 +189,8 @@ void prepareServerSocketForClients() {
 
 
 int main(int argc, char * argv[]) {
-	prepareServerSocketForClients();
-	while(1) {
-		acceptAndServiceConnection();
-	}
+    prepareServerSocketForClients();
+    while(1) {
+        acceptAndServiceConnection();
+    }
 }

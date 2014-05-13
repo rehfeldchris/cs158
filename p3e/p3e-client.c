@@ -18,9 +18,10 @@
 #define RUNTIME_IN_SLOTS 5000
 #define NUM_LAMBDAS 9
 
-int sock, numConsecutiveCollisions;
-struct timeval timeStartedSendingMessages, timeMostRecentMessageSent;
+int sock, numConsecutiveCollisions, isResending;
+struct timeval timeStartedSendingMessages, timeOfMessage;
 int lambdas[NUM_LAMBDAS] = {20, 18, 16, 14, 12, 10, 8, 6, 4};
+long long delay;
 
 double time_diff(struct timeval x , struct timeval y) {
    return (y.tv_sec - x.tv_sec) + 1e-6 * (y.tv_usec - x.tv_usec);
@@ -69,16 +70,22 @@ long mypow(int base, int exponent) {
 }
 
 long exponentialBackoffTime(int k) {
-	return SLOT_TIME_NANOSECONDS * (rand() % (mypow(2, k) - 1));
+	long p, slots, r;
+	p = mypow(2, k);
+	r = rand();
+	slots = (r % (p - 1));
+	return SLOT_TIME_NANOSECONDS * slots;
 }
 
 // sleeps the normal interval we use between messages, or maybe longer if collisions occurred recently
 void sleepBetweenMessages(int lambda) {
 	struct timespec sleepDuration, unsleptRemainder;
+	long bt;
 	sleepDuration.tv_sec = 0;
 
 	if (numConsecutiveCollisions > 0) {
-		sleepDuration.tv_nsec = lambda * exponentialBackoffTime(numConsecutiveCollisions);
+		bt = exponentialBackoffTime(numConsecutiveCollisions);
+		sleepDuration.tv_nsec = lambda * bt;
 	} else {
 		// we sleep for lambda slots even when no collisions
 		sleepDuration.tv_nsec = lambda * SLOT_TIME_NANOSECONDS;
@@ -106,8 +113,13 @@ int sendAndWaitForReply() {
 	char * msg = "A";
 	char buf[2];
 	int bytesSent, bytesReceived, msgLen;
+	struct timeval now;
 
 	//printf("sending msg\n");
+
+	if (!isResending) {
+		gettimeofday(&timeOfMessage, NULL);
+	}
 
 	msgLen = strlen(msg);
 	bytesSent = send(sock, msg, msgLen, 0);
@@ -129,9 +141,13 @@ int sendAndWaitForReply() {
 
 	if (strcmp(buf, "S") == 0) {
 		numConsecutiveCollisions = 0;
+		isResending = 0;
+		gettimeofday(&now, NULL);
+		delay += diff_microseconds(now, timeOfMessage);
 		return 1;
 	} else if (strcmp(buf, "C") == 0) {
 		numConsecutiveCollisions++;
+		isResending = 1;
 		return 0;
 	} else {
 		perror("got bad reply");
@@ -141,6 +157,7 @@ int sendAndWaitForReply() {
 
 void startSendingMessagesToServer() {
 	int i, lambda, numSuccess, numCollision;
+	double avgDelay;
 
 	printf("timeslots per lambda: %d\n", RUNTIME_IN_SLOTS);
 
@@ -152,7 +169,7 @@ void startSendingMessagesToServer() {
 		lambda = lambdas[i];
 		synchronizeWithOtherClients();
 
-		numSuccess = numCollision = 0;
+		delay = numSuccess = numCollision = 0;
 		gettimeofday(&timeStartedSendingMessages, NULL);
 
 		while (shouldKeepSendingMessages()) {
@@ -162,13 +179,13 @@ void startSendingMessagesToServer() {
 
 		// print a table row
 		printf(
-			"%d\t%.5f\t%d\t%d\t%d\t%.4f\t\t%.5f\t\t%.1f\n",
+			"%d\t%.5f\t%d\t%d\t%d\t\t%.5f\t\t%.5f\t\t%.1f\n",
 			lambda,
 			2 / (float) lambda,
 			numSuccess + numCollision,
 			numSuccess,
 			numCollision,
-			RUNTIME_IN_SLOTS - (numSuccess * lambda),
+			delay / ((double) numSuccess * SLOT_TIME_NANOSECONDS),
 			numSuccess / (float) RUNTIME_IN_SLOTS,
 			(100 * numSuccess) / (float) (numSuccess + numCollision)
 		);
