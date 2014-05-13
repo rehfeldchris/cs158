@@ -97,24 +97,25 @@ void runSim() {
 
 // computes and prints the average statistics
 void printAverages() {
-	int i, j, lambda, attempts, min;
+	int i, j, lambda;
+	double sum, min;
 	printf("----Averages of runs----\n");
 	printf("lambda\tmin\tavg slot time\n");
 	for (i = 0; i < NUM_LAMBDAS; i++) {
 		lambda = lambdas[i];
-		attempts = 0;
+		sum = 0;
 		min = 50000;
 		for (j = 0; j < numTrialsPerLambda; j++) {
 			if (results[lambda][j] < min) {
 				min = results[lambda][j];
 			}
-			attempts += results[lambda][j];
+			sum += results[lambda][j];
 		}
 		printf(
-			"%d\t%d\t%.3f\n",
+			"%d\t%.3f\t%.3f\n",
 			lambda,
 			min,
-			attempts / (double) numTrialsPerLambda
+			sum / (double) numTrialsPerLambda
 		);
 	}
 }
