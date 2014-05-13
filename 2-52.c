@@ -72,7 +72,7 @@ double calcContentionInterval(int lambda) {
 
 	// we always subtract 1 because it was the previous attempt that succeeded. we just didnt
 	// know that it succeeded until after we had made another attempt.
-	return prev1AttemptTime;
+	return prev1AttemptTime - prev2AttemptTime;
 }
 
 
