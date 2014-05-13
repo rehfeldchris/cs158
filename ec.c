@@ -15,11 +15,6 @@ Each iteration of the loop is 1 51.2us slot.
 If it is current somethings turn to go it will try and send.
 If collision happens it will then wait 2^k-1 slots to try again
 */
-typedef struct node 
-{
-	int initial;
-	int final;
-}node;
 
 FILE *f;
 
@@ -117,8 +112,6 @@ int main()
 	int i=0,j=0, colcount, num_sending, blocked, completed;
 	
 f = fopen("results.csv","w");
-//	struct node** array = (struct node**)calloc(device_count+3,sizeof(struct node*));
-
 
 	for(j=0; j < RUN_COUNT; j++) // Initialize
 		for(i=0; i < device_count; i++){
