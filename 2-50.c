@@ -15,7 +15,8 @@ If it is current somethings turn to go it will try and send.
 If collision happens it will then wait 2^k-1 slots to try again
 */
 int getSendCount(int array[DEVICE_COUNT][RUN_COUNT], int run, int currTime) // See how many want to send
-{
+{ 
+	
 	int i = 0;
 	int attemptingToSend = 0;
 	for(i; i < DEVICE_COUNT; i++)
